@@ -42,17 +42,16 @@
 
 7. [算法：MAEST-X](#7-算法maest-x)
 
-### 第四篇：应用与使用
+### 第四篇：使用与项目结构
 
-8. [前端可视化](#8-前端可视化)
-9. [快速开始](#9-快速开始)
-10. [项目结构](#10-项目结构)
+8. [快速开始](#8-快速开始)
+9. [项目结构](#9-项目结构)
 
 ### 第五篇：参考
 
-11. [API 参考](#11-api-参考)
-12. [引用与致谢](#12-引用与致谢)
-13. [许可证](#13-许可证)
+10. [API 参考](#10-api-参考)
+11. [引用与致谢](#11-引用与致谢)
+12. [许可证](#12-许可证)
 
 ---
 
@@ -754,62 +753,15 @@ KNOWN_LAYER_MARKERS = {
 
 ---
 
-# 第四篇：应用与使用
+# 第四篇：使用与项目结构
 
-> 本篇介绍如何运行项目、如何在前端可视化结果、如何理解项目代码组织。
-
----
-
-## 8. 前端可视化
-
-`spatial_domain_frontend.html`（73 KB）是一个 **零依赖的单页 Web 应用**，用于直观展示 12 切片的空间域识别结果。
-
-### 8.1 主要功能
-
-| 模块 | 功能 |
-|---|---|
-| 左侧导航 | 切换"概览 / 12 切片 / 指标 / 算法"等视图 |
-| 切片选择器 | 顶部下拉框，12 个切片 ID 可选 |
-| 空间图渲染 | `sc.pl.spatial` 风格，spot 按域标签着色 |
-| 4 指标徽章 | ARI / NMI / HS / CS 实时显示当前切片分数 |
-| 对比视图 | 同时显示 Ground Truth 与 Predicted |
-| CSV 下载 | 当前切片结果可导出 |
-
-### 8.2 使用方式
-
-直接在浏览器打开（无需服务器）：
-
-```bash
-# Windows
-start spatial_domain_frontend.html
-
-# macOS
-open spatial_domain_frontend.html
-
-# Linux
-xdg-open spatial_domain_frontend.html
-```
-
-### 8.3 与后端的约定
-
-前端假设后端生成的标准目录结构：
-
-```
-main_file/
-  Ground_Truth/{sid}/
-    metadata.tsv
-    spatial/{tissue_positions_list.csv, hires_image.png, lowres_image.png}
-  Results/{sid}/spatial/tissue_positions_list.csv    # 末尾追加 pred 列
-  train_log/{ari,nmi,hs,cs,loss}.csv                  # epoch x slice
-```
-
-由 `run_maest_x.py` 自动生成。
+> 本篇介绍如何运行项目、如何理解项目代码组织。
 
 ---
 
-## 9. 快速开始
+## 8. 快速开始
 
-### 9.1 环境要求
+### 8.1 环境要求
 
 | 依赖 | 版本 | 必需 |
 |---|---|---|
@@ -829,7 +781,7 @@ main_file/
 pip install numpy pandas scipy scikit-learn scanpy anndata matplotlib seaborn
 ```
 
-### 9.2 数据准备
+### 8.2 数据准备
 
 按 `DLPFC/{slice_id}/` 格式放置 12 张切片：
 
@@ -842,7 +794,7 @@ DLPFC/
 
 每切片需含 `filtered_feature_bc_matrix.h5`、`metadata.tsv`、`spatial/` 三个文件。
 
-### 9.3 四步运行
+### 8.3 四步运行
 
 ```bash
 # Step 1: 加载 + 预处理 + 保存 12 切片 Ground Truth 可视化
@@ -851,14 +803,14 @@ python DLPFC.py
 # Step 2: 运行 MAEST-X 主流程（生成 results/maest_x_per_slice_metrics.pkl）
 python -c "from code.maest_x_pipeline import run_all_slices; run_all_slices()"
 
-# Step 3: 生成 main_file/ 输出目录（供前端使用）
+# Step 3: 生成 main_file/ 标准输出目录（Ground_Truth + Results + train_log）
 python run_maest_x.py
 
 # Step 4: 生成 8 张报告图（保存到 results/figures/）
 python visualize_maest_x.py
 ```
 
-### 9.4 在自己的数据上使用
+### 8.4 在自己的数据上使用
 
 只需修改 `DLPFC.py` 中的：
 
@@ -871,9 +823,9 @@ slice_idx = ['sample_1', 'sample_2', ...]
 
 ---
 
-## 10. 项目结构
+## 9. 项目结构
 
-### 10.1 目录树
+### 9.1 目录树
 
 ```
 my_spatial_domain_identification_backend/
@@ -881,8 +833,7 @@ my_spatial_domain_identification_backend/
 +-- README.md                              [本文件] 项目主页
 +-- .gitignore                             Git 排除规则（DLPFC/、results/、main_file/、*.pkl、*.h5、...）
 +-- DLPFC.py                               DLPFC 数据读取 + 预处理（HVG=3000, normalize, log1p）
-+-- run_maest_x.py                         生成 main_file/ 输出目录结构（Ground_Truth + Results + train_log）
-+-- spatial_domain_frontend.html           73 KB 单页前端（零依赖可视化）
++-- run_maest_x.py                         生成 main_file/ 标准输出目录结构（Ground_Truth + Results + train_log）
 +-- visualize_maest_x.py                   8 张可视化 PNG（直方图、热图、流程图、混淆矩阵）
 |
 +-- code/                                  [★ 后端核心模块，13 个 .py]
@@ -912,7 +863,7 @@ my_spatial_domain_identification_backend/
 |       +-- visualize.py                   8 张报告图（方法对比、ARI 分布、特征消融、混淆矩阵等）
 ```
 
-### 10.2 代码统计（本地实测）
+### 9.2 代码统计（本地实测）
 
 | 维度 | 数值 |
 |---|---|
@@ -921,7 +872,7 @@ my_spatial_domain_identification_backend/
 | 函数 / 类总数 | 约 70+ 个 |
 | 公共 API 函数 | 约 50+ 个 |
 
-### 10.3 不上传说明
+### 9.3 不上传说明
 
 `.gitignore` 已排除以下内容（不会出现在 GitHub 仓库中）：
 
@@ -939,8 +890,8 @@ my_spatial_domain_identification_backend/
 **本地完整复现需先自行准备：**
 
 1. 下载 DLPFC 数据并放置到 `DLPFC/{slice_id}/`
-2. 创建 Python 虚拟环境并安装依赖（见 [9.1 环境要求](#91-环境要求)）
-3. 依次运行 [9.3 四步运行](#93-四步运行)
+2. 创建 Python 虚拟环境并安装依赖（见 [8.1 环境要求](#81-环境要求)）
+3. 依次运行 [8.3 四步运行](#83-四步运行)
 
 ---
 
@@ -950,9 +901,9 @@ my_spatial_domain_identification_backend/
 
 ---
 
-## 11. API 参考
+## 10. API 参考
 
-### 11.1 数据 / 工具（`code/utils.py`, `code/metrics.py`）
+### 10.1 数据 / 工具（`code/utils.py`, `code/metrics.py`）
 
 | 函数 | 签名 | 说明 |
 |---|---|---|
@@ -964,7 +915,7 @@ my_spatial_domain_identification_backend/
 | `compute_metrics` | `(pred, gt) -> dict` | 计算 `{ARI, NMI, HS, CS}` |
 | `summarize_metrics` | `(per_slice_list) -> dict` | 跨切片聚合 `{mean, median, std, min, max}` |
 
-### 11.2 特征工程（`code/le_features.py`, `code/scrna_features.py`, `code/multi_scale_smooth.py`）
+### 10.2 特征工程（`code/le_features.py`, `code/scrna_features.py`, `code/multi_scale_smooth.py`）
 
 | 函数 | 签名 | 说明 |
 |---|---|---|
@@ -984,7 +935,7 @@ my_spatial_domain_identification_backend/
 | `spatial_smooth` | `(X, knn_idx, rounds=2, alpha=0.5)` | 单尺度平滑 |
 | `multi_scale_smooth` | `(X, knn_idx, scales=((2,0.3),(2,0.5),(3,0.7)))` | 多尺度拼接 |
 
-### 11.3 聚类（`code/cluster_zoo.py`, `code/ensemble.py`, `code/consensus.py`）
+### 10.3 聚类（`code/cluster_zoo.py`, `code/ensemble.py`, `code/consensus.py`）
 
 | 函数 | 签名 | 说明 |
 |---|---|---|
@@ -1002,7 +953,7 @@ my_spatial_domain_identification_backend/
 | `subspace_consensus` | `(X, K, gt, n_subspaces=10, frac=0.5, n_seeds=5, method)` | 随机子空间集成 |
 | `label_propagation_refine` | `(features, labels, knn_idx, gt, n_iter=5, conf_thr=0.5, alpha=0.7)` | 标签传播精化 |
 
-### 11.4 后处理（`code/boundary_postprocess.py`, `code/postprocess.py`）
+### 10.4 后处理（`code/boundary_postprocess.py`, `code/postprocess.py`）
 
 | 函数 | 签名 | 说明 |
 |---|---|---|
@@ -1013,7 +964,7 @@ my_spatial_domain_identification_backend/
 | `boundary_aware_postprocess` | `(labels, knn_idx, X, percentile=90, n_iter=3)` | 完整 boundary-aware 流程 |
 | `spatial_majority_vote` | `(labels, knn_idx, min_consensus=5, k=6)` | 单轮空间多数投票 |
 
-### 11.5 主流程（`code/maest_x_pipeline.py`）
+### 10.5 主流程（`code/maest_x_pipeline.py`）
 
 | 函数 | 签名 | 说明 |
 |---|---|---|
@@ -1023,7 +974,7 @@ my_spatial_domain_identification_backend/
 | `run_slice` | `(data, v3_labels, n_seeds=3, verbose, use_best_alt_direct)` | 单切片 MAEST-X 流程 |
 | `run_all_slices` | `(target_slices, n_seeds=8, save_path)` | 12 切片批量运行 |
 
-### 11.6 可视化（`code/visualize.py`）
+### 10.6 可视化（`code/visualize.py`）
 
 | 函数 | 说明 |
 |---|---|
@@ -1038,9 +989,9 @@ my_spatial_domain_identification_backend/
 
 ---
 
-## 12. 引用与致谢
+## 11. 引用与致谢
 
-### 12.1 主要参考文献
+### 11.1 主要参考文献
 
 - **MAEST** (Zhu et al., 2025) - 本项目的核心参考方法
 - **DLPFC dataset** (Maynard et al., 2021, *Nature Neuroscience*) - 数据集
@@ -1050,7 +1001,7 @@ my_spatial_domain_identification_backend/
 - **SpaGCN** (Hu et al., 2021, *Nature Methods*) - GCN spatial clustering
 - **CCST** (Li & Zhang, 2022, *Nature Communications*) - scRNA cell-type score 思路来源
 
-### 12.2 BibTeX
+### 11.2 BibTeX
 
 ```bibtex
 @misc{maest-x-2026,
@@ -1076,7 +1027,7 @@ my_spatial_domain_identification_backend/
 }
 ```
 
-### 12.3 软件致谢
+### 11.3 软件致谢
 
 - [scanpy](https://scanpy.readthedocs.io/) (Wolf et al., 2018) - 单细胞分析
 - [anndata](https://anndata.readthedocs.io/) (Virshup et al., 2021) - AnnData 数据结构
@@ -1085,14 +1036,14 @@ my_spatial_domain_identification_backend/
 - [matplotlib](https://matplotlib.org/) / [seaborn](https://seaborn.pydata.org/) - 可视化
 - [igraph](https://igraph.org/) / [leidenalg](https://github.com/vtraag/leidenalg) - 社区发现
 
-### 12.4 数据集致谢
+### 11.4 数据集致谢
 
 DLPFC 数据集由 **Lieber Institute for Brain Development (LIBD)** 公开提供：
 <http://research.libd.org/spatialLIBD>
 
 ---
 
-## 13. 许可证
+## 12. 许可证
 
 本项目为 **研究用途**，无明确开源许可证。
 
