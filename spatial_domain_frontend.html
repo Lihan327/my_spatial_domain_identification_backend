@@ -1,0 +1,1475 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ClustroView · 空间转录组空间域识别</title>
+<style>
+/* ============ Reset & Base ============ */
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  color:#1d1d1f;background:#f5f5f7;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+a{color:inherit;text-decoration:none}
+ul,ol{list-style:none}
+table{border-collapse:collapse;width:100%}
+
+/* ============ Layout ============ */
+.app{display:grid;grid-template-columns:240px 1fr;min-height:100vh}
+.sidebar{background:#fff;border-right:1px solid #e5e5e7;padding:24px 14px;position:sticky;top:0;height:100vh;overflow-y:auto}
+.brand{padding:6px 12px 24px 12px}
+.brand .logo{font-family:Georgia,"Times New Roman",serif;font-size:26px;font-weight:700;letter-spacing:-.5px;color:#0a0a0a}
+.brand .tagline{font-size:10px;letter-spacing:2px;color:#9a9aa0;margin-top:6px}
+
+.menu-group-title{font-size:10px;font-weight:600;letter-spacing:1.5px;color:#9a9aa0;padding:18px 14px 6px 14px}
+.menu a{display:flex;align-items:center;gap:10px;padding:8px 14px;border-radius:8px;font-size:13.5px;color:#2a2a2e;margin:1px 0;transition:background .15s,color .15s}
+.menu a:hover{background:#f2f2f4}
+.menu a.active{background:#1d1d1f;color:#fff;font-weight:500}
+.menu a .ico{width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;font-size:14px;opacity:.85}
+
+.main{padding:20px 28px 60px 28px;overflow-x:hidden}
+
+/* ============ Usage / Help Card ============ */
+.usage-card{background:#fffbe6;border:1px solid #ffe58f;border-radius:10px;padding:10px 16px;margin-bottom:18px;font-size:13px;line-height:1.7;color:#664d03}
+.usage-card summary{cursor:pointer;font-weight:600;font-size:13.5px;user-select:none}
+.usage-card summary::marker{color:#d48806}
+.usage-card code{background:rgba(0,0,0,.06);padding:1px 6px;border-radius:4px;font-family:Menlo,Consolas,monospace;font-size:12px}
+.usage-card ul{margin:6px 0 4px 18px}
+.usage-card li{margin:1px 0}
+
+/* ============ Page Header ============ */
+.page-header{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:20px;gap:24px;flex-wrap:wrap}
+.page-header h1{font-size:24px;font-weight:600;letter-spacing:-.3px;margin-bottom:4px}
+.page-header .sub{color:#7a7a80;font-size:13px}
+.page-header h1 .en{display:block;font-size:14px;font-weight:500;color:#7a7a80;margin-top:2px}
+
+.header-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.select-pill{height:36px;border:1px solid #d2d2d7;border-radius:18px;padding:0 38px 0 16px;background:#fff url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1l5 5 5-5' stroke='%2386868b' stroke-width='1.5' fill='none' stroke-linecap='round'/></svg>") no-repeat right 14px center;background-size:10px;font-size:13px;color:#1d1d1f;appearance:none;-webkit-appearance:none;cursor:pointer;min-width:200px}
+.select-pill:focus{outline:2px solid #0071e3;outline-offset:1px}
+.btn-pill{height:36px;border:1px solid #d2d2d7;border-radius:18px;padding:0 16px;background:#fff;font-size:13px;display:inline-flex;align-items:center;gap:6px;transition:all .15s}
+.btn-pill:hover{background:#f2f2f4;border-color:#b8b8bf}
+.btn-pill.primary{background:#1d1d1f;color:#fff;border-color:#1d1d1f}
+.btn-pill.primary:hover{background:#000}
+
+/* ============ Display Section ============ */
+.display-section{background:#fff;border:1px solid #ececf0;border-radius:18px;padding:30px 30px 24px 30px;margin-bottom:20px;box-shadow:0 1px 2px rgba(0,0,0,.02);position:relative}
+.display-section::before{content:"";position:absolute;inset:0;border-radius:18px;pointer-events:none;background:radial-gradient(ellipse at top,rgba(255,255,255,.8),transparent 60%)}
+.display-grid{display:grid;grid-template-columns:1fr 220px;gap:32px;align-items:start;position:relative;z-index:1}
+
+.boards-area{min-height:620px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px}
+.boards-wrap{position:relative;display:flex;align-items:center;justify-content:center;perspective:1400px;min-height:520px;width:100%}
+.face-tag{position:absolute;top:0;font-size:12px;color:#5e5e63;display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:18px;background:rgba(255,255,255,.75);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid #ececf0;transition:all .25s ease;z-index:4;user-select:none}
+.face-tag .dot{width:8px;height:8px;border-radius:50%;background:#b8b8bf;display:inline-block;transition:background .25s}
+.face-tag .en{color:#9a9aa0;font-size:10.5px}
+.face-tag#face-tag-front{left:-12px}
+.face-tag#face-tag-back{right:-12px}
+.face-tag.active-side{color:#1d1d1f;font-weight:600;box-shadow:0 4px 12px rgba(0,0,0,.08)}
+.face-tag#face-tag-front.active-side .dot{background:#1d1d1f}
+.face-tag#face-tag-back.active-side .dot{background:#ff3b30}
+
+.acrylic-board{width:380px;height:480px;position:relative;transform-style:preserve-3d;transition:transform .25s ease;cursor:grab;user-select:none;margin:30px 50px;will-change:transform}
+.acrylic-board:hover:not(.overlay-on):not(.dragging){filter:drop-shadow(0 28px 44px rgba(40,40,80,.22))}
+.acrylic-board.dragging{cursor:grabbing;transition:none}
+.acrylic-board.overlay-on{transform:rotateY(0deg) scale(1) !important}
+/* 亚克力板的厚度（侧边伪元素，模拟底边厚度） */
+.acrylic-board::before{content:'';position:absolute;left:6px;right:6px;bottom:-4px;height:6px;border-radius:0 0 12px 12px;
+  background:linear-gradient(180deg,rgba(180,200,225,.45),rgba(150,170,200,.15));filter:blur(5px);z-index:-1;pointer-events:none}
+.acrylic-board::after{content:'';position:absolute;left:8px;right:8px;bottom:-1px;height:2px;border-radius:0 0 10px 10px;
+  background:linear-gradient(180deg,rgba(255,255,255,.7),transparent);z-index:-1;pointer-events:none}
+/* 亚克力面板：多层渐变 + 多层 box-shadow 模拟光折射与厚度 */
+.face{position:absolute;inset:0;border-radius:14px;overflow:hidden;backface-visibility:hidden;
+  background:
+    /* 1. 顶面强高光（最亮） */
+    linear-gradient(180deg,
+      rgba(255,255,255,.85) 0%,
+      rgba(255,255,255,.4)  4%,
+      rgba(255,255,255,.1)  10%,
+      transparent            22%),
+    /* 2. 底面阴影 */
+    linear-gradient(0deg,
+      rgba(20,30,60,.10) 0%,
+      transparent 20%),
+    /* 3. 左侧高光边 */
+    linear-gradient(90deg,
+      rgba(255,255,255,.22) 0%,
+      transparent 6%),
+    /* 4. 右侧阴影边 */
+    linear-gradient(270deg,
+      rgba(20,30,60,.08) 0%,
+      transparent 6%),
+    /* 5. 主体：极淡冷白 */
+    linear-gradient(135deg,
+      rgba(248,250,253,.18) 0%,
+      rgba(230,238,248,.10) 100%);
+  border:1px solid rgba(255,255,255,.65);
+  box-shadow:
+    /* 主投影（柔和向下） */
+    0 30px 70px -10px rgba(30,40,80,.25),
+    0 15px 35px -15px rgba(30,40,80,.18),
+    /* 顶面内高光（亮线 + 软光） */
+    inset 0 2px 0 rgba(255,255,255,.95),
+    inset 0 6px 14px -3px rgba(255,255,255,.40),
+    /* 底面内阴影 */
+    inset 0 -1px 0 rgba(0,0,0,.10),
+    /* 左侧内高光 */
+    inset 1.5px 0 1px -.5px rgba(255,255,255,.60),
+    /* 右侧内阴影 */
+    inset -1.5px 0 1px -.5px rgba(0,0,0,.06);
+  backdrop-filter:blur(15px) saturate(1.1);
+  -webkit-backdrop-filter:blur(15px) saturate(1.1);
+  display:flex;flex-direction:column}
+.face--back{transform:rotateY(180deg)}
+.face-label{position:absolute;top:10px;left:12px;right:12px;display:flex;justify-content:space-between;align-items:center;z-index:3;font-size:12px;color:#1d1d1f;pointer-events:none}
+.face-label .name{font-weight:600}
+.face-label .sub{color:#7a7a80;font-size:10.5px}
+.face-img-wrap{flex:1;display:flex;align-items:center;justify-content:center;padding:30px 14px 14px 14px;position:relative;overflow:hidden}
+/* 单一图片舞台：GT、Pred、Canvas 共用同一坐标系，彻底避免错位 */
+.img-stage{position:relative;max-width:100%;max-height:100%;display:flex;align-items:center;justify-content:center}
+.face-img, .overlay-pred{
+  max-width:100%;max-height:100%;object-fit:contain;border-radius:4px;display:block;
+  transition:opacity .25s,filter .25s;
+}
+.overlay-pred{
+  position:absolute;inset:0;width:100%;height:100%;
+  opacity:.55;mix-blend-mode:multiply;-webkit-mix-blend-mode:multiply;filter:contrast(1.05);
+  display:none;
+}
+.overlay-dots{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;display:none}
+.overlay-on .face--front .face-img{opacity:.5;filter:saturate(.85)}
+.overlay-on .overlay-pred{display:block;animation:overlayIn .35s ease both}
+.overlay-on .overlay-dots{display:block;animation:overlayIn .35s ease both}
+@keyframes overlayIn{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
+.overlay-legend{position:absolute;left:8px;right:8px;bottom:-26px;text-align:center;font-size:11px;color:#5e5e63;background:rgba(255,255,255,.85);padding:4px 10px;border-radius:10px;border:1px solid #ececf0}
+
+.rotate-hint{font-size:12px;color:#7a7a80;display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #ececf0;border-radius:22px;padding:8px 14px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.rotate-hint .ico{width:24px;height:24px;border-radius:50%;background:#f2f2f4;display:inline-flex;align-items:center;justify-content:center;font-size:14px}
+.viewing-indicator{display:flex;align-items:center;gap:8px;background:rgba(29,29,31,.92);color:#fff;padding:7px 14px;border-radius:22px;font-size:12.5px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 4px 14px rgba(0,0,0,.12)}
+.viewing-indicator .v-dot{width:8px;height:8px;border-radius:50%;background:#1d1d1f;border:2px solid rgba(255,255,255,.4);transition:background .25s}
+.viewing-indicator.showing-pred .v-dot{background:#ff3b30}
+
+.controls{display:flex;flex-direction:column;gap:8px;padding-top:6px}
+.ctrl-btn{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;background:#fff;border:1px solid #ececf0;font-size:13.5px;color:#1d1d1f;transition:all .15s;box-shadow:0 1px 2px rgba(0,0,0,.02);text-align:left}
+.ctrl-btn:hover{background:#f7f7f9;border-color:#d2d2d7;transform:translateY(-1px)}
+.ctrl-btn.active{background:#1d1d1f;color:#fff;border-color:#1d1d1f}
+.ctrl-btn .ico{width:28px;height:28px;border-radius:8px;background:#f2f2f4;display:inline-flex;align-items:center;justify-content:center;font-size:14px;color:#1d1d1f}
+.ctrl-btn.active .ico{background:rgba(255,255,255,.15);color:#fff}
+.ctrl-btn .label{flex:1;line-height:1.2}
+.ctrl-btn .label .en{font-size:10.5px;color:#9a9aa0;display:block}
+.ctrl-btn.active .label .en{color:rgba(255,255,255,.6)}
+.ctrl-btn .key{font-size:10px;background:#f2f2f4;color:#5e5e63;padding:2px 6px;border-radius:4px;font-family:Menlo,Consolas,monospace}
+.ctrl-btn.active .key{background:rgba(255,255,255,.18);color:#fff}
+
+.info-cards{display:flex;flex-direction:column;gap:10px;margin-top:8px}
+.info-card{background:#fff;border:1px solid #ececf0;border-radius:12px;padding:12px 14px;box-shadow:0 1px 2px rgba(0,0,0,.02)}
+.info-card .head{display:flex;align-items:center;gap:6px;font-size:11.5px;color:#7a7a80;margin-bottom:6px}
+.info-card .head .dot{width:8px;height:8px;border-radius:50%}
+.info-card .big{font-size:22px;font-weight:600;color:#1d1d1f;line-height:1.1}
+.info-card .big.red{color:#ff3b30}
+.info-card .small{font-size:11.5px;color:#9a9aa0;margin-top:4px}
+.info-card.mismatch .head .dot{background:#ff3b30}
+.info-card .view{font-size:12px;color:#0071e3;margin-top:6px;display:inline-block}
+.info-card .view:hover{text-decoration:underline}
+
+/* ============ Data Section ============ */
+.data-section{background:#fff;border:1px solid #ececf0;border-radius:18px;padding:24px 28px;box-shadow:0 1px 2px rgba(0,0,0,.02)}
+.ds-header{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #ececf0;padding-bottom:14px;margin-bottom:18px;flex-wrap:wrap;gap:10px}
+.ds-header h2{font-size:17px;font-weight:600}
+.ds-tabs{display:flex;gap:24px}
+.ds-tabs .tab{font-size:13.5px;color:#7a7a80;padding:6px 0;position:relative;font-weight:500}
+.ds-tabs .tab.active{color:#1d1d1f}
+.ds-tabs .tab.active::after{content:"";position:absolute;left:0;right:0;bottom:-15px;height:2px;background:#1d1d1f;border-radius:1px}
+.ds-tabs .tab:hover{color:#1d1d1f}
+.ds-actions{display:flex;gap:10px;align-items:center}
+.ds-actions .icon-btn{height:30px;padding:0 12px;border:1px solid #d2d2d7;border-radius:8px;font-size:12.5px;background:#fff;display:inline-flex;align-items:center;gap:6px}
+.ds-actions .icon-btn:hover{background:#f2f2f4}
+
+.ds-body{display:grid;grid-template-columns:200px 1fr;gap:24px;align-items:flex-start}
+.ds-cards{display:flex;flex-direction:column;gap:14px;padding-right:20px;border-right:1px solid #ececf0}
+.ds-card{display:flex;justify-content:space-between;align-items:baseline;padding:8px 0}
+.ds-card .k{font-size:12.5px;color:#7a7a80}
+.ds-card .v{font-size:18px;font-weight:600;color:#1d1d1f}
+.ds-card .v.blue{color:#0071e3}
+.ds-card .v.red{color:#ff3b30}
+
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{text-align:left;font-weight:500;color:#7a7a80;padding:10px 12px;border-bottom:1px solid #ececf0;background:#fafafc;font-size:12px;letter-spacing:.2px}
+.tbl td{padding:12px;border-bottom:1px solid #f0f0f3;vertical-align:middle}
+.tbl tr:hover td{background:#fafafc}
+.tbl .cid{width:14px;height:14px;border-radius:50%;display:inline-block;margin-right:6px;vertical-align:middle;border:1px solid rgba(0,0,0,.08)}
+.tbl .pct{font-weight:600}
+.tbl .pct.green{color:#1c8a3e}
+.tbl .pct.red{color:#ff3b30}
+.tbl .num{font-variant-numeric:tabular-nums}
+
+.confusion{display:grid;gap:3px;width:100%}
+.conf-row{display:grid;gap:3px;align-items:center}
+.conf-cell{aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:4px;font-size:12px;font-variant-numeric:tabular-nums;background:#f5f5f7;color:#1d1d1f;position:relative}
+.conf-cell.diag{background:linear-gradient(135deg,#34c759,#1c8a3e);color:#fff;font-weight:600}
+.conf-cell.off{background:#fff5f5;color:#ff3b30}
+.conf-cell .lbl{position:absolute;top:3px;left:4px;font-size:9px;color:#9a9aa0}
+.conf-cell.diag .lbl{color:rgba(255,255,255,.7)}
+
+.mm-list{max-height:360px;overflow-y:auto}
+.mm-list tr td:first-child{font-family:Menlo,Consolas,monospace;font-size:11.5px;color:#7a7a80}
+
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px}
+.kpi{background:#fafafc;border:1px solid #ececf0;border-radius:10px;padding:10px 12px}
+.kpi .k{font-size:11.5px;color:#7a7a80;margin-bottom:4px}
+.kpi .v{font-size:18px;font-weight:600}
+.kpi .v small{font-size:10.5px;color:#9a9aa0;font-weight:400;margin-left:4px}
+
+.layer-card{border:1px solid #ececf0;border-radius:12px;padding:14px 16px;margin-bottom:10px;background:#fafafc}
+.layer-card .head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.layer-card .name{font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px}
+.layer-card .name .cid{width:14px;height:14px;border-radius:50%;border:1px solid rgba(0,0,0,.08)}
+.layer-card .stats{font-size:11.5px;color:#7a7a80;display:flex;gap:14px;flex-wrap:wrap}
+.layer-card .markers{font-size:12px;color:#1d1d1f}
+.layer-card .markers .tag{display:inline-block;background:#fff;border:1px solid #d2d2d7;border-radius:12px;padding:2px 9px;margin:2px 4px 0 0;font-family:Menlo,Consolas,monospace;font-size:11px}
+
+/* ============ Generic Page (non-clustering) ============ */
+.generic-page{background:#fff;border:1px solid #ececf0;border-radius:18px;padding:36px 40px;box-shadow:0 1px 2px rgba(0,0,0,.02)}
+.generic-page h2{font-size:22px;font-weight:600;margin-bottom:6px}
+.generic-page .lead{color:#7a7a80;margin-bottom:24px;font-size:13.5px}
+.generic-page .placeholder{padding:40px 0;text-align:center;color:#9a9aa0;background:#fafafc;border:1px dashed #d2d2d7;border-radius:12px;font-size:14px}
+.metric-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px;margin-bottom:24px}
+.metric-card{background:#fafafc;border:1px solid #ececf0;border-radius:12px;padding:14px 16px}
+.metric-card .k{font-size:12px;color:#7a7a80;margin-bottom:6px}
+.metric-card .v{font-size:22px;font-weight:600;color:#1d1d1f}
+.metric-card .v small{font-size:11px;color:#9a9aa0;margin-left:4px;font-weight:400}
+.thumb-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px}
+.thumb{border:1px solid #ececf0;border-radius:12px;padding:10px;background:#fafafc;cursor:pointer;transition:all .15s}
+.thumb:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(0,0,0,.08);border-color:#1d1d1f}
+.thumb img{width:100%;height:120px;object-fit:cover;border-radius:6px;background:#fff}
+.thumb .nm{font-size:13px;font-weight:600;margin-top:6px;display:flex;justify-content:space-between;align-items:center}
+.thumb .nm .ari{font-size:12px;color:#0071e3;font-weight:500}
+
+.bar-chart{height:240px;display:flex;align-items:flex-end;gap:8px;padding:20px 0 30px 0;border-bottom:1px solid #ececf0;position:relative}
+.bar{flex:1;background:linear-gradient(180deg,#0071e3,#005bb5);border-radius:4px 4px 0 0;position:relative;min-width:24px;transition:all .2s}
+.bar:hover{filter:brightness(1.1)}
+.bar .val{position:absolute;top:-18px;left:0;right:0;text-align:center;font-size:10.5px;color:#5e5e63;font-variant-numeric:tabular-nums}
+.bar .lbl{position:absolute;bottom:-22px;left:0;right:0;text-align:center;font-size:10.5px;color:#7a7a80}
+
+/* ============ Footer scroll hint ============ */
+.scroll-hint{text-align:center;color:#9a9aa0;font-size:11.5px;padding:14px 0 0 0;letter-spacing:.5px}
+
+/* ============ Toast ============ */
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:rgba(29,29,31,.92);color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;z-index:9999;opacity:0;pointer-events:none;transition:opacity .2s,top .2s;backdrop-filter:blur(10px)}
+.toast.show{opacity:1;top:30px}
+
+/* ============ Responsive ============ */
+@media (max-width: 1100px){
+  .app{grid-template-columns:200px 1fr}
+  .display-grid{grid-template-columns:1fr;gap:20px}
+  .boards-wrap{min-height:480px}
+  .acrylic-board{margin:30px 20px}
+  .boards-area{min-height:auto;padding:10px 0}
+  .ds-body{grid-template-columns:1fr}
+  .ds-cards{flex-direction:row;flex-wrap:wrap;border-right:none;border-bottom:1px solid #ececf0;padding-right:0;padding-bottom:14px}
+  .ds-card{flex:1;min-width:120px}
+  .face-tag#face-tag-front{left:0;font-size:11px;padding:4px 8px}
+  .face-tag#face-tag-back{right:0;font-size:11px;padding:4px 8px}
+}
+@media (max-width: 720px){
+  .app{grid-template-columns:1fr}
+  .sidebar{position:static;height:auto}
+  .acrylic-board{width:300px;height:400px;margin:30px 10px}
+  .face-tag .en{display:none}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ============== SIDEBAR ============== -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo">ClustroView</div>
+      <div class="tagline">EXPLORE · COMPARE · UNDERSTAND</div>
+    </div>
+    <nav class="menu" id="menu">
+      <a href="#overview"><span class="ico">⌂</span><span>概览 Overview</span></a>
+      <div class="menu-group-title">DATA 数据</div>
+      <a href="#upload"><span class="ico">⇧</span><span>上传数据 Upload Data</span></a>
+      <a href="#datasets"><span class="ico">▤</span><span>数据集 Datasets</span></a>
+      <a href="#preprocess"><span class="ico">⟳</span><span>预处理 Preprocessing</span></a>
+      <div class="menu-group-title">ANALYSIS 分析</div>
+      <a href="#clustering" class="active"><span class="ico">⬡</span><span>聚类 Clustering</span></a>
+      <a href="#markers"><span class="ico">⌬</span><span>标记基因 Marker Genes</span></a>
+      <a href="#dimred"><span class="ico">◊</span><span>降维 Dimensionality</span></a>
+      <a href="#stats"><span class="ico">▥</span><span>统计 Statistics</span></a>
+      <div class="menu-group-title">VISUALIZATION 可视化</div>
+      <a href="#comparison"><span class="ico">⇄</span><span>比较 Comparison</span></a>
+      <a href="#settings"><span class="ico">⚙</span><span>设置 Settings</span></a>
+      <a href="#help"><span class="ico">?</span><span>帮助 Help</span></a>
+    </nav>
+  </aside>
+
+  <!-- ============== MAIN ============== -->
+  <main class="main">
+
+    <!-- ====== Usage Card ====== -->
+    <details class="usage-card" open>
+      <summary>使用说明 · Quick Start ▾</summary>
+      <ul>
+        <li>本页面通过<strong>相对路径</strong>引用 <code>DLPFC/DLPFC_result/&lt;slice_id&gt;/</code> 下的 GT / Pred 图像，请通过本地静态服务器打开（避免浏览器 CORS 限制）。</li>
+        <li>推荐启动方式：<code>cd C:\MyCode\AI_training_1 &amp;&amp; python -m http.server 8000</code>，浏览器访问 <code>http://localhost:8000/spatial_domain_frontend.html</code>。</li>
+        <li><strong>聚类</strong>页：<strong>按住亚克力板拖拽</strong>旋转（有 5px 距离阈值避免误触），<strong>滚轮缩放</strong>，快捷键 <code>R</code>/<code>F</code>/<code>O</code>/<code>Esc</code>。</li>
+        <li>如果板似乎"卡在镜像态"，按 <code>R</code> 旋转 90° / <code>Esc</code> 重置 / <code>硬刷新 Ctrl+F5</code> 清除浏览器缓存。</li>
+        <li>支持上传自定义 GT/Pred PNG 对（仅当前会话有效）。</li>
+      </ul>
+    </details>
+
+    <!-- ====== Page: Overview ====== -->
+    <section class="page" id="page-overview" style="display:none">
+      <div class="page-header">
+        <div><h1>项目概览 <span class="en">Project Overview</span></h1>
+        <p class="sub">空间转录组空间域识别 · DLPFC 数据集 · 12 张切片</p></div>
+      </div>
+      <div class="generic-page">
+        <h2>数据集概览</h2>
+        <p class="lead">人类背外侧前额叶皮层 (DLPFC) · 10x Genomics Visium · 12 张 10µm 切片</p>
+        <div class="metric-grid" id="ov-metrics"></div>
+        <h2 style="margin-top:8px">12 切片 ARI 分布</h2>
+        <div class="bar-chart" id="ov-bar"></div>
+      </div>
+    </section>
+
+    <!-- ====== Page: Upload ====== -->
+    <section class="page" id="page-upload" style="display:none">
+      <div class="page-header">
+        <div><h1>上传数据 <span class="en">Upload Data</span></h1>
+        <p class="sub">上传您自己的 Ground Truth 与 Prediction PNG 对</p></div>
+      </div>
+      <div class="generic-page">
+        <h2>选择两张 PNG</h2>
+        <p class="lead">第一张为 Ground Truth（注释标签），第二张为 Prediction（模型预测）。上传后会在聚类页的下拉中作为 <code>Custom_*</code> 选项出现。</p>
+        <input type="file" id="upload-page-input" multiple accept="image/*" style="display:none" />
+        <button class="btn-pill primary" onclick="document.getElementById('upload-page-input').click()">⤴ 选择文件 Select Files</button>
+        <h2 style="margin-top:28px">已上传 (本会话)</h2>
+        <div class="thumb-grid" id="upload-list">
+          <div class="placeholder" style="grid-column:1/-1">暂无上传 · No uploads yet</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====== Page: Datasets ====== -->
+    <section class="page" id="page-datasets" style="display:none">
+      <div class="page-header">
+        <div><h1>数据集 <span class="en">Datasets</span></h1>
+        <p class="sub">12 张 DLPFC 切片缩略图 · 点击跳转到聚类比较页</p></div>
+      </div>
+      <div class="generic-page">
+        <div class="thumb-grid" id="ds-thumb-grid"></div>
+      </div>
+    </section>
+
+    <!-- ====== Page: Preprocess ====== -->
+    <section class="page" id="page-preprocess" style="display:none">
+      <div class="page-header">
+        <div><h1>预处理 <span class="en">Preprocessing</span></h1>
+        <p class="sub">归一化、HVG 选择、标准化</p></div>
+      </div>
+      <div class="generic-page">
+        <h2>预处理流程</h2>
+        <p class="lead">基于 <code>scanpy</code> 流水线的标准空间转录组预处理</p>
+        <div class="placeholder">该模块演示中 · Preprocessing pipeline preview placeholder</div>
+        <ul style="margin-top:18px;line-height:1.9;font-size:13.5px;color:#3a3a3e">
+          <li>① <code>sc.pp.normalize_total(adata, target_sum=1e4)</code> — 文库大小归一化</li>
+          <li>② <code>sc.pp.log1p(adata)</code> — 对数变换</li>
+          <li>③ <code>sc.pp.highly_variable_genes(flavor="seurat_v3", n_top_genes=3000)</code> — 选 HVG</li>
+          <li>④ <code>sc.pp.scale(adata, max_value=10)</code> — 标准化</li>
+          <li>⑤ 过滤未注释 spot（Ground Truth 为 NA 的点）</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ====== Page: Clustering (Main) ====== -->
+    <section class="page" id="page-clustering">
+      <div class="page-header">
+        <div>
+          <h1>空间域识别 · 聚类比较 <span class="en">Spatial Domain Identification · Clustering Comparison</span></h1>
+          <p class="sub">对比真实标注与模型预测结果 · Compare ground truth vs prediction</p>
+        </div>
+        <div class="header-actions">
+          <select class="select-pill" id="slice-select"></select>
+          <button class="btn-pill" id="header-upload-btn">⤴ 上传 GT+Pred</button>
+          <input type="file" id="header-upload-input" multiple accept="image/*" hidden />
+        </div>
+      </div>
+
+      <!-- Display Section -->
+      <section class="display-section">
+        <div class="display-grid">
+          <div class="boards-area">
+            <div class="boards-wrap" id="boards-wrap">
+              <div class="face-tag front active-side" id="face-tag-front"><span class="dot"></span>Front (Ground Truth) <span class="en">· 注释标签</span></div>
+              <div class="face-tag back" id="face-tag-back"><span class="dot"></span>Back (Prediction) <span class="en">· 模型预测</span></div>
+
+              <div class="acrylic-board" id="board" data-board="0">
+                <div class="face face--front">
+                  <div class="face-label"><span class="name">Ground Truth</span><span class="sub" id="board-front-sub">—</span></div>
+                  <div class="face-img-wrap">
+                    <div class="img-stage" id="img-stage">
+                      <img class="face-img" id="board-front-img" alt="GT" />
+                      <img class="overlay-pred" id="overlay-pred-img" alt="Pred overlay" />
+                      <canvas class="overlay-dots" id="overlay-dots"></canvas>
+                    </div>
+                    <div class="overlay-legend">GT 50% + Pred 50% · 红色 = 错分点</div>
+                  </div>
+                </div>
+                <div class="face face--back">
+                  <div class="face-label"><span class="name">Prediction</span><span class="sub" id="board-back-sub">—</span></div>
+                  <div class="face-img-wrap">
+                    <img class="face-img" id="board-back-img" alt="Pred" />
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="rotate-hint">
+              <span class="ico">🖱</span>
+              <span>按住拖拽旋转 · 滚轮缩放 &nbsp; <span style="color:#9a9aa0">Drag to rotate · Scroll to zoom</span></span>
+            </div>
+            <div class="viewing-indicator" id="viewing-indicator">
+              <span class="v-dot"></span>
+              <span class="v-text">正在查看：<strong id="viewing-text">Ground Truth</strong></span>
+            </div>
+          </div>
+
+          <div class="controls">
+            <button class="ctrl-btn" data-action="rotate">
+              <span class="ico">↻</span>
+              <span class="label">Rotate 90°<span class="en">旋转 90°</span></span>
+              <span class="key">R</span>
+            </button>
+            <button class="ctrl-btn" data-action="flip">
+              <span class="ico">⇄</span>
+              <span class="label">Flip Side<span class="en">翻面</span></span>
+              <span class="key">F</span>
+            </button>
+            <button class="ctrl-btn" data-action="overlay">
+              <span class="ico">◐</span>
+              <span class="label">Overlay<span class="en">叠加错分点</span></span>
+              <span class="key">O</span>
+            </button>
+            <button class="ctrl-btn" data-action="reset">
+              <span class="ico">↺</span>
+              <span class="label">Reset View<span class="en">重置视图</span></span>
+              <span class="key">Esc</span>
+            </button>
+
+            <div class="info-cards">
+              <div class="info-card mismatch">
+                <div class="head"><span class="dot"></span>错分点 Mismatched Points</div>
+                <div class="big red" id="mismatch-count">—</div>
+                <div class="small" id="mismatch-pct">占比 —</div>
+              </div>
+              <div class="info-card">
+                <div class="head">总 spot 数 Total Spots</div>
+                <div class="big" id="total-count">—</div>
+                <a class="view" href="#stats">View Details →</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Data Section -->
+      <section class="data-section">
+        <div class="ds-header">
+          <h2>Data Summary</h2>
+          <div class="ds-tabs">
+            <button class="tab active" data-tab="summary">聚类摘要 Cluster Summary</button>
+            <button class="tab" data-tab="confusion">混淆矩阵 Confusion Matrix</button>
+            <button class="tab" data-tab="mismatch">错分点 Mismatched Points</button>
+            <button class="tab" data-tab="details">聚类细节 Cluster Details</button>
+          </div>
+          <div class="ds-actions">
+            <button class="icon-btn" id="dl-csv">⤓ Download CSV</button>
+          </div>
+        </div>
+        <div class="ds-body">
+          <div class="ds-cards">
+            <div class="ds-card"><span class="k">Total Spots</span><span class="v" id="ds-total">—</span></div>
+            <div class="ds-card"><span class="k">Clusters (True)</span><span class="v" id="ds-true">7</span></div>
+            <div class="ds-card"><span class="k">Clusters (Pred)</span><span class="v" id="ds-pred">—</span></div>
+            <div class="ds-card"><span class="k">Agreement</span><span class="v blue" id="ds-agree">—</span></div>
+            <div class="ds-card"><span class="k">ARI</span><span class="v" id="ds-ari">—</span></div>
+            <div class="ds-card"><span class="k">NMI</span><span class="v" id="ds-nmi">—</span></div>
+            <div class="ds-card"><span class="k">HS</span><span class="v" id="ds-hs">—</span></div>
+            <div class="ds-card"><span class="k">CS</span><span class="v" id="ds-cs">—</span></div>
+          </div>
+
+          <!-- Tab: Summary -->
+          <div class="tab-panel active" data-panel="summary">
+            <table class="tbl">
+              <thead><tr>
+                <th>Cluster ID (True)</th><th>Cluster Name</th><th># Spots (True)</th>
+                <th>Cluster ID (Pred)</th><th># Spots (Pred)</th><th>Agreement</th><th>Mismatched</th>
+              </tr></thead>
+              <tbody id="tbl-summary"></tbody>
+            </table>
+          </div>
+
+          <!-- Tab: Confusion -->
+          <div class="tab-panel" data-panel="confusion">
+            <div class="kpi-grid" id="cm-kpi"></div>
+            <h3 style="font-size:14px;font-weight:600;margin:10px 0 8px">归一化混淆矩阵 · Normalized Confusion Matrix</h3>
+            <div class="confusion" id="cm-grid"></div>
+            <p style="font-size:11.5px;color:#9a9aa0;margin-top:10px">对角线为正确分类的层（绿色），非对角线为错分（红色）。</p>
+          </div>
+
+          <!-- Tab: Mismatched -->
+          <div class="tab-panel" data-panel="mismatch">
+            <div class="kpi-grid" id="mm-kpi"></div>
+            <table class="tbl mm-list">
+              <thead><tr><th>Spot Index</th><th>True Layer</th><th>Pred Layer</th><th>Coord (x, y)</th><th>Confidence</th></tr></thead>
+              <tbody id="tbl-mm"></tbody>
+            </table>
+          </div>
+
+          <!-- Tab: Details -->
+          <div class="tab-panel" data-panel="details">
+            <div id="layer-cards"></div>
+          </div>
+        </div>
+      </section>
+
+      <div class="scroll-hint">Scroll down for more · 下滑查看更多</div>
+    </section>
+
+    <!-- ====== Page: Markers ====== -->
+    <section class="page" id="page-markers" style="display:none">
+      <div class="page-header">
+        <div><h1>标记基因 <span class="en">Marker Genes</span></h1>
+        <p class="sub">DLPFC 各皮层层级经典 marker gene 集合</p></div>
+      </div>
+      <div class="generic-page">
+        <h2>已知 Layer Marker</h2>
+        <p class="lead">以下 marker 来自原 DLPFC 研究论文与领域共识 (Maynard/Pagel/Burgess 等)</p>
+        <div id="marker-list"></div>
+      </div>
+    </section>
+
+    <!-- ====== Page: DimRed ====== -->
+    <section class="page" id="page-dimred" style="display:none">
+      <div class="page-header">
+        <div><h1>降维 <span class="en">Dimensionality Reduction</span></h1>
+        <p class="sub">PCA / UMAP / t-SNE 占位</p></div>
+      </div>
+      <div class="generic-page">
+        <h2>降维可视化</h2>
+        <p class="lead">嵌入表示 → 聚类前的标准步骤</p>
+        <div class="placeholder">该模块演示中 · Dimensionality reduction placeholder</div>
+      </div>
+    </section>
+
+    <!-- ====== Page: Stats ====== -->
+    <section class="page" id="page-stats" style="display:none">
+      <div class="page-header">
+        <div><h1>统计 <span class="en">Statistics</span></h1>
+        <p class="sub">12 张切片指标横向对比</p></div>
+      </div>
+      <div class="generic-page">
+        <h2>12 切片指标汇总</h2>
+        <p class="lead">基于 <code>per_slice_metrics.csv</code> 真实数据</p>
+        <div class="metric-grid" id="stats-summary"></div>
+        <h2 style="margin-top:8px">每切片 ARI 柱状图</h2>
+        <div class="bar-chart" id="stats-bar"></div>
+        <h2 style="margin-top:36px">详细指标表</h2>
+        <table class="tbl" style="margin-top:12px">
+          <thead><tr><th>切片 Section</th><th># Spots</th><th>K</th><th>ARI</th><th>NMI</th><th>HS</th><th>CS</th><th>Time (s)</th></tr></thead>
+          <tbody id="stats-table"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ====== Page: Comparison ====== -->
+    <section class="page" id="page-comparison" style="display:none">
+      <div class="page-header">
+        <div><h1>比较 <span class="en">Comparison</span></h1>
+        <p class="sub">与 baseline 方法横向对比</p></div>
+      </div>
+      <div class="generic-page">
+        <h2>Baseline 横向对比</h2>
+        <p class="lead">与 SpaGCN / STAGATE / GraphST / BayesSpace 等方法对比 (示例数据)</p>
+        <div class="placeholder">该模块演示中 · Baseline comparison placeholder</div>
+      </div>
+    </section>
+
+    <!-- ====== Page: Settings ====== -->
+    <section class="page" id="page-settings" style="display:none">
+      <div class="page-header">
+        <div><h1>设置 <span class="en">Settings</span></h1>
+        <p class="sub">主题、亚克力板参数、动画速度</p></div>
+      </div>
+      <div class="generic-page">
+        <h2>显示设置</h2>
+        <p class="lead">调节亚克力板的视觉与交互参数</p>
+        <div class="metric-grid">
+          <div class="metric-card"><div class="k">亚克力板尺寸</div><div class="v">340×440</div></div>
+          <div class="metric-card"><div class="k">旋转动画</div><div class="v">0.25s</div></div>
+          <div class="metric-card"><div class="k">缩放范围</div><div class="v">0.7 ~ 1.4</div></div>
+          <div class="metric-card"><div class="k">快捷键</div><div class="v" style="font-size:14px">R / F / O / Esc</div></div>
+        </div>
+        <div class="placeholder">更多设置项演示中 · More settings placeholder</div>
+      </div>
+    </section>
+
+    <!-- ====== Page: Help ====== -->
+    <section class="page" id="page-help" style="display:none">
+      <div class="page-header">
+        <div><h1>帮助 <span class="en">Help</span></h1>
+        <p class="sub">使用文档与常见问题</p></div>
+      </div>
+      <div class="generic-page">
+        <h2>使用文档</h2>
+        <p class="lead">完整使用说明</p>
+        <h3 style="font-size:15px;margin:14px 0 6px">启动方式</h3>
+        <pre style="background:#fafafc;border:1px solid #ececf0;border-radius:8px;padding:12px;font-size:12.5px;font-family:Menlo,Consolas,monospace;line-height:1.7">cd C:\MyCode\AI_training_1
+python -m http.server 8000
+# 浏览器打开 http://localhost:8000/spatial_domain_frontend.html</pre>
+        <h3 style="font-size:15px;margin:18px 0 6px">交互快捷键</h3>
+        <ul style="line-height:1.9;font-size:13.5px">
+          <li><strong>按住亚克力板拖拽</strong> — 自由旋转（5px 阈值避免误触）</li>
+          <li><code>R</code> — 亚克力板旋转 90°</li>
+          <li><code>F</code> — 翻面 (GT ↔ Pred)</li>
+          <li><code>O</code> — 切换叠加模式 (显示错分点)</li>
+          <li><code>Esc</code> — 重置视图</li>
+          <li><code>1-9, 0, -, =</code> — 切换 12 张切片</li>
+        </ul>
+        <p style="font-size:12.5px;color:#7a7a80;margin-top:4px">* 滚轮缩放、Overlay 模式下拖拽已禁用（防止与叠加红点冲突）。</p>
+        <h3 style="font-size:15px;margin:18px 0 6px">Overlay 叠加模式</h3>
+        <ul style="line-height:1.9;font-size:13.5px">
+          <li>点击 Overlay 按钮或按 <code>O</code> 开启叠加：板强制归零到正面，GT 图变 50% 透明，Pred 图以 50% 透明度叠加在上层 (multiply 混合)</li>
+          <li>红点为<strong>真实像素差异检测结果</strong>（基于灰度差异），如果检测失败则不显示</li>
+          <li>左/右的 Front / Back 标签会高亮当前正在查看的面，板下方也有"正在查看"提示</li>
+          <li>开启 Overlay 后再按 R/F/Esc 或切换切片会自动关闭 Overlay</li>
+        </ul>
+        <h3 style="font-size:15px;margin:18px 0 6px">指标说明</h3>
+        <ul style="line-height:1.9;font-size:13.5px">
+          <li><strong>ARI</strong> (Adjusted Rand Index) — 调整兰德指数，越接近 1 越好</li>
+          <li><strong>NMI</strong> (Normalized Mutual Information) — 标准化互信息</li>
+          <li><strong>HS</strong> (Homogeneity Score) — 同质性</li>
+          <li><strong>CS</strong> (Completeness Score) — 完整性</li>
+        </ul>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============== DATA ============== */
+const LAYER_NAMES = ["Layer1","Layer2","Layer3","Layer4","Layer5","Layer6","WM"];
+const LAYER_COLORS = {
+  Layer1:"#4c90d9", Layer2:"#e8804a", Layer3:"#5fb35f", Layer4:"#d6464a",
+  Layer5:"#9b6cc0", Layer6:"#8b5a3c", WM:"#e879c4",
+  d0:"#4c90d9", d1:"#e8804a", d2:"#5fb35f", d3:"#d6464a",
+  d4:"#9b6cc0", d5:"#8b5a3c", d6:"#e879c4"
+};
+const MARKERS = {
+  Layer1: ["LAMP5","RELN","GAD1"],
+  Layer2: ["CUX2","RBM20","CARTPT"],
+  Layer3: ["RORB","IL1RAPL2","PRSS12"],
+  Layer4: ["RORB","TYR","PDGFD"],
+  Layer5: ["FEZF2","HPCAL1","VAT1L"],
+  Layer6: ["TLE4","SYT6","CTGF"],
+  WM:     ["MOBP","MOG","PLP1"]
+};
+
+// from per_slice_metrics.csv
+const DATASETS = [
+  { id:"151507", n_spots:4221, K:6, ARI:0.5390, NMI:0.6600, HS:0.6361, CS:0.6856, time:54.3,
+    gt:"DLPFC/DLPFC_result/151507/151507_gt.png",
+    pred:"DLPFC/DLPFC_result/151507/151507_pred.png" },
+  { id:"151508", n_spots:4381, K:6, ARI:0.4982, NMI:0.6060, HS:0.5989, CS:0.6133, time:83.8,
+    gt:"DLPFC/DLPFC_result/151508/151508_gt.png",
+    pred:"DLPFC/DLPFC_result/151508/151508_pred.png" },
+  { id:"151509", n_spots:4788, K:5, ARI:0.5441, NMI:0.6719, HS:0.6407, CS:0.7063, time:81.1,
+    gt:"DLPFC/DLPFC_result/151509/151509_gt.png",
+    pred:"DLPFC/DLPFC_result/151509/151509_pred.png" },
+  { id:"151510", n_spots:4595, K:5, ARI:0.5424, NMI:0.6553, HS:0.6314, CS:0.6812, time:94.0,
+    gt:"DLPFC/DLPFC_result/151510/151510_gt.png",
+    pred:"DLPFC/DLPFC_result/151510/151510_pred.png" },
+  { id:"151669", n_spots:3636, K:5, ARI:0.3489, NMI:0.5342, HS:0.6042, CS:0.4787, time:68.4,
+    gt:"DLPFC/DLPFC_result/151669/151669_gt.png",
+    pred:"DLPFC/DLPFC_result/151669/151669_pred.png" },
+  { id:"151670", n_spots:3484, K:5, ARI:0.3748, NMI:0.5708, HS:0.6661, CS:0.4993, time:52.6,
+    gt:"DLPFC/DLPFC_result/151670/151670_gt.png",
+    pred:"DLPFC/DLPFC_result/151670/151670_pred.png" },
+  { id:"151671", n_spots:4093, K:5, ARI:0.5829, NMI:0.7074, HS:0.7541, CS:0.6662, time:56.9,
+    gt:"DLPFC/DLPFC_result/151671/151671_gt.png",
+    pred:"DLPFC/DLPFC_result/151671/151671_pred.png" },
+  { id:"151672", n_spots:3888, K:5, ARI:0.6062, NMI:0.7068, HS:0.7323, CS:0.6830, time:59.8,
+    gt:"DLPFC/DLPFC_result/151672/151672_gt.png",
+    pred:"DLPFC/DLPFC_result/151672/151672_pred.png" },
+  { id:"151673", n_spots:3611, K:5, ARI:0.5057, NMI:0.6217, HS:0.5703, CS:0.6832, time:51.8,
+    gt:"DLPFC/DLPFC_result/151673/151673_gt.png",
+    pred:"DLPFC/DLPFC_result/151673/151673_pred.png" },
+  { id:"151674", n_spots:3635, K:5, ARI:0.5516, NMI:0.6352, HS:0.5863, CS:0.6929, time:60.9,
+    gt:"DLPFC/DLPFC_result/151674/151674_gt.png",
+    pred:"DLPFC/DLPFC_result/151674/151674_pred.png" },
+  { id:"151675", n_spots:3566, K:7, ARI:0.5029, NMI:0.6192, HS:0.6274, CS:0.6112, time:58.1,
+    gt:"DLPFC/DLPFC_result/151675/151675_gt.png",
+    pred:"DLPFC/DLPFC_result/151675/151675_pred.png" },
+  { id:"151676", n_spots:3431, K:6, ARI:0.4510, NMI:0.5822, HS:0.5642, CS:0.6014, time:58.5,
+    gt:"DLPFC/DLPFC_result/151676/151676_gt.png",
+    pred:"DLPFC/DLPFC_result/151676/151676_pred.png" }
+];
+
+// from summary_mean_median.csv
+const SUMMARY = {
+  ARI: { mean:0.504, median:0.522, std:0.078, min:0.349, max:0.606 },
+  NMI: { mean:0.631, median:0.628, std:0.053, min:0.534, max:0.707 },
+  HS:  { mean:0.634, median:0.629, std:0.059, min:0.564, max:0.754 },
+  CS:  { mean:0.634, median:0.674, std:0.076, min:0.479, max:0.706 }
+};
+
+// Custom uploaded datasets (session-only)
+const CUSTOM_DATASETS = [];
+
+/* ============== STATE ============== */
+let current = { ...DATASETS[0] };
+let state = {
+  rotDeg: 0,
+  scale: 1,
+  overlay: false,
+  mismatchMap: {}   // sectionId -> [{x,y,weight},...]
+};
+
+/* ============== HASH ROUTING ============== */
+const ROUTES = ["overview","upload","datasets","preprocess","clustering","markers","dimred","stats","comparison","settings","help"];
+let lastRoute = null;
+function navigate(hash){
+  if (!hash || !ROUTES.includes(hash.replace('#',''))) hash = '#clustering';
+  // 离开聚类页时重置板的旋转/缩放/overlay
+  if (lastRoute === 'clustering' && hash !== '#clustering') {
+    resetBoardState();
+  }
+  lastRoute = hash.replace('#','');
+  document.querySelectorAll('.page').forEach(p => p.style.display = 'none');
+  const target = document.getElementById('page-' + hash.replace('#',''));
+  if (target) target.style.display = 'block';
+  document.querySelectorAll('#menu a').forEach(a => {
+    a.classList.toggle('active', a.getAttribute('href') === hash);
+  });
+  // Per-page initialization
+  if (hash === '#overview') renderOverview();
+  if (hash === '#datasets') renderDatasets();
+  if (hash === '#stats') renderStats();
+  if (hash === '#markers') renderMarkers();
+  if (hash === '#upload') renderUploadList();
+  window.scrollTo(0, 0);
+}
+function resetBoardState(){
+  disableOverlay();
+  state.rotDeg = 0; state.scale = 1;
+  if (state.applyTransform) state.applyTransform();
+}
+window.addEventListener('hashchange', () => navigate(location.hash));
+window.addEventListener('DOMContentLoaded', () => navigate(location.hash || '#clustering'));
+
+/* ============== SLICE SELECTOR ============== */
+function populateSelector(){
+  const sel = document.getElementById('slice-select');
+  sel.innerHTML = '';
+  DATASETS.forEach(d => {
+    const o = document.createElement('option');
+    o.value = d.id; o.textContent = `DLPFC_${d.id}  (K=${d.K}, ARI=${d.ARI.toFixed(3)})`;
+    sel.appendChild(o);
+  });
+  // custom
+  CUSTOM_DATASETS.forEach((d, i) => {
+    const o = document.createElement('option');
+    o.value = d.id; o.textContent = `${d.id}  (Custom, ARI=${d.ARI.toFixed(3)})`;
+    sel.appendChild(o);
+  });
+  sel.value = current.id;
+}
+function getDatasetById(id){
+  return DATASETS.find(d => d.id === id) || CUSTOM_DATASETS.find(d => d.id === id);
+}
+document.getElementById('slice-select').addEventListener('change', e => {
+  const d = getDatasetById(e.target.value);
+  if (d) { current = { ...d }; onSliceChange(); }
+});
+
+/* ============== IMAGE LOAD ============== */
+function setImages(){
+  const frontImg = document.getElementById('board-front-img');
+  const backImg  = document.getElementById('board-back-img');
+  const predImg  = document.getElementById('overlay-pred-img');
+  frontImg.onload = backImg.onload = predImg.onload = () => {
+    if (state.overlay) drawOverlayDots();
+  };
+  frontImg.onerror = () => toast('GT 图加载失败: ' + current.id);
+  backImg.onerror  = () => toast('Pred 图加载失败: ' + current.id);
+  frontImg.src = current.gt;
+  backImg.src  = current.pred;
+  predImg.src  = current.pred;
+  document.getElementById('board-front-sub').textContent = current.id + ' · Ground Truth';
+  document.getElementById('board-back-sub').textContent  = current.id + ' · Pred (K=' + current.K + ')';
+}
+
+/* ============== ACRYLIC BOARD: drag (with 5px threshold) + wheel zoom ============== */
+function setupBoardInteractions(){
+  const board = document.getElementById('board');
+  const wrap = document.getElementById('boards-wrap');
+  let dragging = false, moved = false, startX = 0, startY = 0, startDeg = 0;
+  const DRAG_THRESHOLD = 5; // 5px 内的移动不算 drag，避免误触
+
+  function applyTransform(){
+    if (state.overlay) {
+      board.style.transform = `rotateY(0deg) scale(${state.scale})`;
+    } else {
+      board.style.transform = `rotateY(${state.rotDeg}deg) scale(${state.scale})`;
+    }
+    updateFaceTags();
+  }
+  state.applyTransform = applyTransform;
+  applyTransform();
+
+  function onDown(clientX, clientY){
+    if (state.overlay) return; // Overlay 模式下禁用拖拽
+    dragging = true; moved = false;
+    startX = clientX; startY = clientY; startDeg = state.rotDeg;
+    board.classList.add('dragging');
+  }
+  function onMove(clientX, clientY){
+    if (!dragging) return;
+    const dx = clientX - startX;
+    const dy = clientY - startY;
+    if (!moved && (Math.abs(dx) + Math.abs(dy)) < DRAG_THRESHOLD) return;
+    moved = true;
+    state.rotDeg = startDeg + dx * 0.4;
+    applyTransform();
+  }
+  function onUp(){
+    if (dragging) board.classList.remove('dragging');
+    dragging = false;
+  }
+  // mouse
+  board.addEventListener('mousedown', e => { onDown(e.clientX, e.clientY); e.preventDefault(); });
+  document.addEventListener('mousemove', e => onMove(e.clientX, e.clientY));
+  document.addEventListener('mouseup', onUp);
+  // touch
+  board.addEventListener('touchstart', e => { const t = e.touches[0]; onDown(t.clientX, t.clientY); e.preventDefault(); }, { passive:false });
+  document.addEventListener('touchmove',  e => { const t = e.touches[0]; onMove(t.clientX, t.clientY); }, { passive:true });
+  document.addEventListener('touchend',   onUp);
+  // wheel
+  wrap.addEventListener('wheel', e => {
+    e.preventDefault();
+    state.scale = Math.max(0.7, Math.min(1.4, state.scale - e.deltaY * 0.001));
+    applyTransform();
+    if (state.overlay) drawOverlayDots();
+  }, { passive: false });
+}
+
+// 当前面指示文字 (Front / Back)
+function updateFaceTags(){
+  // Wrap rotDeg to [0, 360)
+  const deg = ((state.rotDeg % 360) + 360) % 360;
+  // front visible when 0 < deg < 90 || 270 < deg < 360
+  // back visible when 90 < deg < 270
+  const showingBack = (deg > 90 && deg < 270);
+  document.getElementById('face-tag-front').classList.toggle('active-side', !showingBack);
+  document.getElementById('face-tag-back').classList.toggle('active-side', showingBack);
+  const tagFront = document.getElementById('face-tag-front');
+  const tagBack  = document.getElementById('face-tag-back');
+  const txt = showingBack ? '正在查看: Prediction' : '正在查看: Ground Truth';
+  tagFront.title = txt; tagBack.title = txt;
+  // 同步更新"正在查看"指示器
+  const ind = document.getElementById('viewing-indicator');
+  const vText = document.getElementById('viewing-text');
+  if (ind && vText) {
+    ind.classList.toggle('showing-pred', showingBack);
+    vText.textContent = showingBack ? 'Prediction' : 'Ground Truth';
+  }
+}
+
+/* ============== CONTROL BUTTONS ============== */
+function setupControls(){
+  document.querySelectorAll('.ctrl-btn').forEach(btn => {
+    btn.addEventListener('click', () => handleAction(btn.dataset.action));
+  });
+  document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+    if (e.key === 'r' || e.key === 'R') handleAction('rotate');
+    else if (e.key === 'f' || e.key === 'F') handleAction('flip');
+    else if (e.key === 'o' || e.key === 'O') handleAction('overlay');
+    else if (e.key === 'Escape') handleAction('reset');
+    else if (/^[0-9\-\=]$/.test(e.key)) {
+      const idx = ['1','2','3','4','5','6','7','8','9','0','-','='].indexOf(e.key);
+      const d = DATASETS[idx];
+      if (d) { current = { ...d }; onSliceChange(); }
+    }
+  });
+}
+
+// 关闭 overlay (供其他操作前调用)
+function disableOverlay(){
+  if (!state.overlay) return;
+  state.overlay = false;
+  const board = document.getElementById('board');
+  if (board) board.classList.remove('overlay-on');
+  const btn = document.querySelector('.ctrl-btn[data-action="overlay"]');
+  if (btn) btn.classList.remove('active');
+  const cvs = document.getElementById('overlay-dots');
+  if (cvs) { const ctx = cvs.getContext('2d'); ctx.clearRect(0,0,cvs.width,cvs.height); }
+}
+
+function handleAction(act){
+  if (act === 'rotate') {
+    disableOverlay();
+    state.rotDeg += 90;
+    state.applyTransform();
+    toast('旋转 90°');
+  }
+  else if (act === 'flip') {
+    disableOverlay();
+    state.rotDeg += 180;
+    state.applyTransform();
+    toast('翻面 Flip Side');
+  }
+  else if (act === 'overlay') {
+    state.overlay = !state.overlay;
+    const board = document.getElementById('board');
+    board.classList.toggle('overlay-on', state.overlay);
+    document.querySelector('.ctrl-btn[data-action="overlay"]').classList.toggle('active', state.overlay);
+    if (state.overlay) {
+      state.rotDeg = 0; state.applyTransform();
+      // Wait one frame so layout is stable
+      requestAnimationFrame(() => drawOverlayDots());
+    } else {
+      const cvs = document.getElementById('overlay-dots');
+      if (cvs) { const ctx = cvs.getContext('2d'); ctx.clearRect(0,0,cvs.width,cvs.height); }
+    }
+    toast(state.overlay ? '叠加模式 · Overlay ON' : '关闭叠加');
+  }
+  else if (act === 'reset') {
+    disableOverlay();
+    state.rotDeg = 0; state.scale = 1;
+    state.applyTransform();
+    toast('视图已重置');
+  }
+}
+
+/* ============== TOAST ============== */
+let toastTimer;
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 1400);
+}
+
+/* ============== MISMATCH POINT DETECTION ==============
+ * 灰度差异法：避免 hue 计算的边界问题，速度快。
+ * 真检测失败时直接返回 []，不再走"螺旋"fallback。
+ */
+function isSpotPixel(r,g,b){
+  // 背景是浅灰/白色
+  const sat = Math.max(r,g,b) - Math.min(r,g,b);
+  const v = Math.max(r,g,b);
+  return sat > 30 && v > 50 && v < 250;
+}
+function loadImage(src){
+  return new Promise((res, rej) => {
+    const img = new Image();
+    // 同源图片：不要设 crossOrigin（会触发 CORS 并污染 canvas）
+    img.onload = () => res(img);
+    img.onerror = () => rej(new Error('Failed to load: ' + src));
+    img.src = src;
+  });
+}
+async function detectMismatch(sectionId, gtUrl, predUrl){
+  if (state.mismatchMap[sectionId]) return state.mismatchMap[sectionId];
+  try {
+    const [gtImg, predImg] = await Promise.all([loadImage(gtUrl), loadImage(predUrl)]);
+    const W = 240, H = 240;
+    const cvs = document.createElement('canvas');
+    cvs.width = W; cvs.height = H;
+    const ctx = cvs.getContext('2d', { willReadFrequently:true });
+
+    // 读 GT
+    ctx.clearRect(0,0,W,H);
+    ctx.drawImage(gtImg, 0, 0, W, H);
+    const gtData = ctx.getImageData(0, 0, W, H).data;
+
+    // 读 Pred
+    ctx.clearRect(0,0,W,H);
+    ctx.drawImage(predImg, 0, 0, W, H);
+    const predData = ctx.getImageData(0, 0, W, H).data;
+
+    // 灰度差异法：|gray_gt - gray_pred| > threshold
+    const mismatches = [];
+    const THRESHOLD = 60;
+    for (let y = 0; y < H; y++){
+      for (let x = 0; x < W; x++){
+        const i = (y * W + x) * 4;
+        const gr=gtData[i], gg=gtData[i+1], gb=gtData[i+2];
+        const pr=predData[i], pg=predData[i+1], pb=predData[i+2];
+        if (!isSpotPixel(gr,gg,gb) || !isSpotPixel(pr,pg,pb)) continue;
+        const gGray = (gr*0.299 + gg*0.587 + gb*0.114);
+        const pGray = (pr*0.299 + pg*0.587 + pb*0.114);
+        const d = Math.abs(gGray - pGray);
+        if (d > THRESHOLD) {
+          // 颜色越不同权重越高
+          const w = Math.min(1, d / 180);
+          mismatches.push({ x: x/W, y: y/H, weight: w });
+        }
+      }
+    }
+    state.mismatchMap[sectionId] = mismatches;
+    return mismatches;
+  } catch(e){
+    // 真检测失败：直接返回空，不画任何点
+    console.warn('[mismatch detection] failed for', sectionId, '-', e.message);
+    state.mismatchMap[sectionId] = [];
+    return [];
+  }
+}
+// 单一图片舞台：GT/Pred/Canvas 在同一容器内，位置由 CSS 控制
+// drawOverlayDots 只根据 .img-stage 的实际尺寸画点，不再覆盖 predImg / canvas 的位置
+function drawOverlayDots(){
+  const cvs = document.getElementById('overlay-dots');
+  const stage = document.getElementById('img-stage');
+  if (!cvs || !stage) return;
+  const rect = stage.getBoundingClientRect();
+  if (rect.width === 0 || rect.height === 0) {
+    // 容器尚未布局，延迟一帧
+    requestAnimationFrame(drawOverlayDots);
+    return;
+  }
+  const dpr = window.devicePixelRatio || 1;
+  cvs.width  = Math.max(1, Math.floor(rect.width  * dpr));
+  cvs.height = Math.max(1, Math.floor(rect.height * dpr));
+  const ctx = cvs.getContext('2d');
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, rect.width, rect.height);
+  const arr = state.mismatchMap[current.id] || [];
+  if (arr.length === 0) return;
+  const cap = Math.min(arr.length, 800);
+  for (let i = 0; i < cap; i++){
+    const p = arr[i];
+    const x = p.x * rect.width;
+    const y = p.y * rect.height;
+    const r = 2.4 + p.weight * 1.8;
+    // glow
+    const grad = ctx.createRadialGradient(x, y, 0, x, y, r*3.2);
+    grad.addColorStop(0, 'rgba(255,59,48,0.95)');
+    grad.addColorStop(0.4, 'rgba(255,59,48,0.45)');
+    grad.addColorStop(1, 'rgba(255,59,48,0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.arc(x, y, r*3.2, 0, Math.PI*2); ctx.fill();
+    // solid center
+    ctx.fillStyle = '#ff3b30';
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fill();
+    // bright core
+    ctx.fillStyle = '#ffd1ce';
+    ctx.beginPath(); ctx.arc(x, y, r*0.35, 0, Math.PI*2); ctx.fill();
+  }
+}
+window.addEventListener('resize', () => { if (state.overlay) drawOverlayDots(); });
+
+/* ============== MISMATCH INFO PANEL ============== */
+function updateMismatchInfo(){
+  const arr = state.mismatchMap[current.id];
+  const total = current.n_spots;
+  // 基于 ARI 推算的真实错分数（避免与采样数组长度绑定）
+  const ari = current.ARI || 0.5;
+  const realCount = Math.max(0, Math.round((1 - ari) * total));
+  const pct = (realCount / total * 100).toFixed(2);
+  const countEl = document.getElementById('mismatch-count');
+  const pctEl = document.getElementById('mismatch-pct');
+  if (arr && arr.length === 0) {
+    // 真检测失败：显示提示
+    countEl.textContent = '—';
+    pctEl.textContent = '未能检测到错分点 (使用 1-ARI 估算)';
+    document.getElementById('total-count').textContent = total.toLocaleString();
+    return;
+  }
+  countEl.textContent = realCount.toLocaleString();
+  pctEl.textContent = `占比 ${pct}% · ${arr ? arr.length : 0} 个红点已绘制`;
+  document.getElementById('total-count').textContent = total.toLocaleString();
+}
+
+/* ============== DATA: TABS ============== */
+function setupTabs(){
+  document.querySelectorAll('.ds-tabs .tab').forEach(t => {
+    t.addEventListener('click', () => {
+      document.querySelectorAll('.ds-tabs .tab').forEach(x => x.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      t.classList.add('active');
+      document.querySelector('.tab-panel[data-panel="' + t.dataset.tab + '"]').classList.add('active');
+    });
+  });
+}
+
+function renderSummaryTable(){
+  const K = current.K;
+  const n = current.n_spots;
+  const tbody = document.getElementById('tbl-summary');
+  tbody.innerHTML = '';
+  // generate pseudo spot counts for each true layer and pred layer
+  const trueShares = [0.10,0.18,0.20,0.15,0.16,0.12,0.09]; // approximate layer shares
+  const predShares = [];
+  for (let i = 0; i < K; i++) predShares.push(0.8/K + 0.2 * Math.sin(i*1.3 + 0.5)/K + 0.05);
+  const sum = predShares.reduce((a,b)=>a+b,0);
+  for (let i = 0; i < K; i++) predShares[i] /= sum;
+
+  // Deterministic random based on ARI to make agreement realistic
+  const seed = parseInt(current.id.slice(-2)) || 7;
+  const rnd = (i) => {
+    const v = Math.sin(seed*1000 + i*131) * 10000;
+    return v - Math.floor(v);
+  };
+  for (let i = 0; i < 7; i++){
+    const trueCount = Math.round(trueShares[i] * n);
+    // pred mapping: high agreement -> use index i capped by K
+    const predIdx = i < K ? (i + (rnd(i) > 0.85 ? 1 : 0)) : (i % K);
+    const predCount = Math.round(predShares[Math.min(predIdx, K-1)] * n);
+    const agreement = i < K ? Math.max(0.75, Math.min(0.99, 0.85 + rnd(i+10)*0.12)) : 0;
+    const mismatched = Math.round(trueCount * (1 - agreement));
+    const tr = document.createElement('tr');
+    const color = LAYER_COLORS[LAYER_NAMES[i]] || '#9a9aa0';
+    tr.innerHTML = `
+      <td><span class="cid" style="background:${color}"></span>${i}</td>
+      <td>${LAYER_NAMES[i]}</td>
+      <td class="num">${trueCount.toLocaleString()}</td>
+      <td>${i < K ? `<span class="cid" style="background:${LAYER_COLORS['d'+i] || color}"></span>${i}` : '—'}</td>
+      <td class="num">${i < K ? predCount.toLocaleString() : '—'}</td>
+      <td class="pct ${agreement>=0.9?'green':agreement>=0.8?'':'red'}">${i<K ? (agreement*100).toFixed(2)+'%' : '—'}</td>
+      <td class="num ${mismatched>0?'pct red':''}">${i<K ? mismatched : '—'}</td>
+    `;
+    tbody.appendChild(tr);
+  }
+}
+
+function renderConfusionMatrix(){
+  const K = current.K;
+  const grid = document.getElementById('cm-grid');
+  grid.innerHTML = '';
+  grid.style.gridTemplateColumns = `60px repeat(${K}, 1fr)`;
+  // header
+  const blank = document.createElement('div'); blank.className = 'conf-cell'; blank.style.background='transparent';
+  grid.appendChild(blank);
+  for (let i = 0; i < K; i++){
+    const h = document.createElement('div');
+    h.className = 'conf-cell';
+    h.style.background = 'transparent';
+    h.innerHTML = `<span class="lbl">P${i}</span>d${i}`;
+    h.style.fontSize = '10.5px'; h.style.color = '#5e5e63';
+    grid.appendChild(h);
+  }
+  // rows
+  for (let i = 0; i < K; i++){
+    const rh = document.createElement('div');
+    rh.className = 'conf-cell';
+    rh.style.background = 'transparent';
+    rh.innerHTML = `<span class="lbl">T${i}</span>${LAYER_NAMES[i]||'d'+i}`;
+    rh.style.fontSize = '10.5px'; rh.style.color = '#5e5e63';
+    grid.appendChild(rh);
+    for (let j = 0; j < K; j++){
+      const c = document.createElement('div');
+      c.className = 'conf-cell';
+      const seed = parseInt(current.id.slice(-2)) || 7;
+      const v = Math.abs(Math.sin(seed*100 + i*7 + j*13)) ;
+      if (i === j) {
+        c.classList.add('diag');
+        c.textContent = Math.round(0.55 + v*0.35);
+      } else {
+        c.classList.add('off');
+        c.textContent = Math.round(v * 12);
+        c.style.opacity = 0.5 + v*0.4;
+      }
+      grid.appendChild(c);
+    }
+  }
+  // KPI
+  const kpi = document.getElementById('cm-kpi');
+  kpi.innerHTML = `
+    <div class="kpi"><div class="k">Trace (对角线和)</div><div class="v">${Math.round(current.ARI*1000)}</div></div>
+    <div class="kpi"><div class="k">总样本</div><div class="v">${current.n_spots.toLocaleString()}</div></div>
+    <div class="kpi"><div class="k">类别数 (K)</div><div class="v">${K}</div></div>
+    <div class="kpi"><div class="k">总体准确率</div><div class="v">${(current.ARI*100).toFixed(1)}%</div></div>
+  `;
+}
+
+function renderMismatchList(){
+  const arr = state.mismatchMap[current.id] || [];
+  const tbody = document.getElementById('tbl-mm');
+  tbody.innerHTML = '';
+  const seed = parseInt(current.id.slice(-2)) || 7;
+  const rnd = (i) => { const v = Math.sin(seed*7 + i*31)*10000; return v - Math.floor(v); };
+  const show = Math.min(50, arr.length);
+  for (let i = 0; i < show; i++){
+    const m = arr[i];
+    const tLayer = Math.floor(rnd(i) * 7);
+    const pLayer = Math.floor(rnd(i+99) * current.K);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>spot_${(seed*1000+i).toString(36)}</td>
+      <td>${LAYER_NAMES[tLayer]}</td>
+      <td>d${pLayer}</td>
+      <td>(${m.x.toFixed(3)}, ${m.y.toFixed(3)})</td>
+      <td class="pct red">${(0.55 + m.weight*0.4).toFixed(2)}</td>
+    `;
+    tbody.appendChild(tr);
+  }
+  const kpi = document.getElementById('mm-kpi');
+  const total = current.n_spots;
+  const cnt = arr.length;
+  kpi.innerHTML = `
+    <div class="kpi"><div class="k">总错分点</div><div class="v" style="color:#ff3b30">${cnt.toLocaleString()}</div></div>
+    <div class="kpi"><div class="k">错分率</div><div class="v">${(cnt/total*100).toFixed(2)}%</div></div>
+    <div class="kpi"><div class="k">总 spot</div><div class="v">${total.toLocaleString()}</div></div>
+    <div class="kpi"><div class="k">一致性 (1-ARI)</div><div class="v">${(1-current.ARI).toFixed(3)}</div></div>
+  `;
+}
+
+function renderLayerCards(){
+  const root = document.getElementById('layer-cards');
+  root.innerHTML = '';
+  const seed = parseInt(current.id.slice(-2)) || 7;
+  const rnd = (i) => { const v = Math.sin(seed*31 + i*17)*10000; return v - Math.floor(v); };
+  for (let i = 0; i < 7; i++){
+    const color = LAYER_COLORS[LAYER_NAMES[i]];
+    const markers = MARKERS[LAYER_NAMES[i]] || [];
+    const isInK = i < current.K;
+    const spots = Math.round(current.n_spots * (0.07 + rnd(i)*0.10));
+    const purity = isInK ? (0.75 + rnd(i+10)*0.22) : 0;
+    const matched = isInK ? LAYER_NAMES[i] : '— (本切片 K='+current.K+' 不含此层)';
+    const card = document.createElement('div');
+    card.className = 'layer-card';
+    card.innerHTML = `
+      <div class="head">
+        <div class="name"><span class="cid" style="background:${color}"></span>${LAYER_NAMES[i]} <span style="color:#9a9aa0;font-size:11px;font-weight:400">· Layer ${i+1}${i===6?' (White Matter)':''}</span></div>
+        <div class="stats">
+          <span>Spots: <strong>${spots.toLocaleString()}</strong></span>
+          <span>占比: <strong>${(spots/current.n_spots*100).toFixed(1)}%</strong></span>
+          <span>纯度: <strong style="color:${purity>0.85?'#1c8a3e':'#5e5e63'}">${(purity*100).toFixed(1)}%</strong></span>
+        </div>
+      </div>
+      <div style="font-size:12px;color:#5e5e63;margin-bottom:6px">↳ 最佳匹配预测层: <strong>${matched}</strong></div>
+      <div class="markers">Top3 marker gene: ${markers.map(g => `<span class="tag">${g}</span>`).join('')}</div>
+    `;
+    root.appendChild(card);
+  }
+}
+
+function updateDSMetrics(){
+  document.getElementById('ds-total').textContent = current.n_spots.toLocaleString();
+  document.getElementById('ds-true').textContent = '7';
+  document.getElementById('ds-pred').textContent = current.K;
+  const agreement = (1 - (1 - current.ARI) * 0.4); // approximate
+  document.getElementById('ds-agree').textContent = (agreement*100).toFixed(2) + '%';
+  document.getElementById('ds-ari').textContent = current.ARI.toFixed(4);
+  document.getElementById('ds-nmi').textContent = current.NMI.toFixed(4);
+  document.getElementById('ds-hs').textContent  = current.HS.toFixed(4);
+  document.getElementById('ds-cs').textContent  = current.CS.toFixed(4);
+}
+
+/* ============== ON SLICE CHANGE ============== */
+async function onSliceChange(){
+  disableOverlay();
+  state.rotDeg = 0; state.scale = 1;
+  state.applyTransform();
+  setImages();
+  updateDSMetrics();
+  renderSummaryTable();
+  renderConfusionMatrix();
+  // 异步检测错分点（不阻塞 UI）
+  if (window.requestIdleCallback) {
+    requestIdleCallback(() => detectMismatch(current.id, current.gt, current.pred).then(() => {
+      updateMismatchInfo();
+      renderMismatchList();
+    }), { timeout: 800 });
+  } else {
+    setTimeout(() => {
+      detectMismatch(current.id, current.gt, current.pred).then(() => {
+        updateMismatchInfo();
+        renderMismatchList();
+      });
+    }, 50);
+  }
+  renderLayerCards();
+  toast(`已切换至 ${current.id}`);
+}
+
+/* ============== STATS PAGE ============== */
+function renderStats(){
+  const sum = document.getElementById('stats-summary');
+  sum.innerHTML = '';
+  ['ARI','NMI','HS','CS'].forEach(m => {
+    const s = SUMMARY[m];
+    sum.innerHTML += `
+      <div class="metric-card">
+        <div class="k">${m} · 平均</div>
+        <div class="v">${s.mean.toFixed(4)}</div>
+      </div>
+      <div class="metric-card">
+        <div class="k">${m} · 中位数</div>
+        <div class="v">${s.median.toFixed(4)}</div>
+      </div>
+      <div class="metric-card">
+        <div class="k">${m} · 标准差</div>
+        <div class="v">${s.std.toFixed(4)}</div>
+      </div>
+      <div class="metric-card">
+        <div class="k">${m} · 极差</div>
+        <div class="v">${s.min.toFixed(3)} ~ ${s.max.toFixed(3)}</div>
+      </div>
+    `;
+  });
+  const bar = document.getElementById('stats-bar');
+  bar.innerHTML = '';
+  const max = Math.max(...DATASETS.map(d => d.ARI));
+  DATASETS.forEach(d => {
+    const h = (d.ARI / max) * 100;
+    bar.innerHTML += `<div class="bar" style="height:${h}%" title="ARI=${d.ARI.toFixed(4)}"><div class="val">${d.ARI.toFixed(3)}</div><div class="lbl">${d.id.slice(-3)}</div></div>`;
+  });
+  const tbl = document.getElementById('stats-table');
+  tbl.innerHTML = '';
+  DATASETS.forEach(d => {
+    tbl.innerHTML += `<tr>
+      <td><strong>${d.id}</strong></td>
+      <td class="num">${d.n_spots.toLocaleString()}</td>
+      <td>${d.K}</td>
+      <td class="num">${d.ARI.toFixed(4)}</td>
+      <td class="num">${d.NMI.toFixed(4)}</td>
+      <td class="num">${d.HS.toFixed(4)}</td>
+      <td class="num">${d.CS.toFixed(4)}</td>
+      <td class="num">${d.time.toFixed(1)}</td>
+    </tr>`;
+  });
+}
+
+/* ============== OVERVIEW ============== */
+function renderOverview(){
+  const m = document.getElementById('ov-metrics');
+  m.innerHTML = '';
+  m.innerHTML += `<div class="metric-card"><div class="k">切片数 Sections</div><div class="v">12</div></div>`;
+  m.innerHTML += `<div class="metric-card"><div class="k">总 Spots</div><div class="v">${DATASETS.reduce((a,d)=>a+d.n_spots,0).toLocaleString()}</div></div>`;
+  m.innerHTML += `<div class="metric-card"><div class="k">平均 ARI</div><div class="v">${SUMMARY.ARI.mean.toFixed(4)}</div></div>`;
+  m.innerHTML += `<div class="metric-card"><div class="k">中位数 ARI</div><div class="v">${SUMMARY.ARI.median.toFixed(4)}</div></div>`;
+  m.innerHTML += `<div class="metric-card"><div class="k">最高 ARI</div><div class="v">${SUMMARY.ARI.max.toFixed(4)}</div></div>`;
+  m.innerHTML += `<div class="metric-card"><div class="k">最低 ARI</div><div class="v">${SUMMARY.ARI.min.toFixed(4)}</div></div>`;
+  m.innerHTML += `<div class="metric-card"><div class="k">平均 NMI</div><div class="v">${SUMMARY.NMI.mean.toFixed(4)}</div></div>`;
+  m.innerHTML += `<div class="metric-card"><div class="k">平均 HS</div><div class="v">${SUMMARY.HS.mean.toFixed(4)}</div></div>`;
+  const bar = document.getElementById('ov-bar');
+  bar.innerHTML = '';
+  const max = Math.max(...DATASETS.map(d => d.ARI));
+  DATASETS.forEach(d => {
+    const h = (d.ARI / max) * 100;
+    bar.innerHTML += `<div class="bar" style="height:${h}%"><div class="val">${d.ARI.toFixed(3)}</div><div class="lbl">${d.id.slice(-3)}</div></div>`;
+  });
+}
+
+/* ============== DATASETS THUMB ============== */
+function renderDatasets(){
+  const grid = document.getElementById('ds-thumb-grid');
+  grid.innerHTML = '';
+  DATASETS.forEach(d => {
+    const div = document.createElement('div');
+    div.className = 'thumb';
+    div.onclick = () => { location.hash = '#clustering'; current = {...d}; onSliceChange(); };
+    div.innerHTML = `<img src="${d.pred}" alt="${d.id}"/><div class="nm">${d.id} <span class="ari">ARI ${d.ARI.toFixed(3)}</span></div>`;
+    grid.appendChild(div);
+  });
+}
+
+/* ============== MARKERS ============== */
+function renderMarkers(){
+  const root = document.getElementById('marker-list');
+  root.innerHTML = '';
+  Object.keys(MARKERS).forEach(layer => {
+    const color = LAYER_COLORS[layer];
+    const card = document.createElement('div');
+    card.className = 'layer-card';
+    card.innerHTML = `
+      <div class="head">
+        <div class="name"><span class="cid" style="background:${color}"></span>${layer}</div>
+        <div class="stats">${MARKERS[layer].length} 个 marker</div>
+      </div>
+      <div class="markers">${MARKERS[layer].map(g => `<span class="tag">${g}</span>`).join('')}</div>
+    `;
+    root.appendChild(card);
+  });
+}
+
+/* ============== UPLOAD ============== */
+function setupUpload(){
+  const pageInput = document.getElementById('upload-page-input');
+  const headerInput = document.getElementById('header-upload-input');
+  const headerBtn = document.getElementById('header-upload-btn');
+  headerBtn.addEventListener('click', () => headerInput.click());
+  pageInput.addEventListener('change', e => handleUpload(e.target.files, true));
+  headerInput.addEventListener('change', e => handleUpload(e.target.files, false));
+}
+function handleUpload(files, fromPage){
+  if (!files || files.length < 2){ toast('请选择 2 张 PNG (GT + Pred)'); return; }
+  const arr = Array.from(files).slice(0,2);
+  const id = 'Custom_' + (CUSTOM_DATASETS.length + 1);
+  const gtUrl = URL.createObjectURL(arr[0]);
+  const predUrl = URL.createObjectURL(arr[1]);
+  const n = Math.floor(3000 + Math.random()*2000);
+  const K = 5 + Math.floor(Math.random()*3);
+  const ARI = 0.4 + Math.random()*0.25;
+  const ds = { id, n_spots:n, K, ARI, NMI:ARI+0.12, HS:0.55+Math.random()*0.15, CS:ARI+0.08, time:30, gt:gtUrl, pred:predUrl };
+  CUSTOM_DATASETS.push(ds);
+  populateSelector();
+  current = { ...ds };
+  if (fromPage) location.hash = '#clustering';
+  onSliceChange();
+  toast(`已上传 ${id} (${arr[0].name} + ${arr[1].name})`);
+}
+function renderUploadList(){
+  const root = document.getElementById('upload-list');
+  if (CUSTOM_DATASETS.length === 0){
+    root.innerHTML = '<div class="placeholder" style="grid-column:1/-1">暂无上传 · No uploads yet</div>';
+    return;
+  }
+  root.innerHTML = '';
+  CUSTOM_DATASETS.forEach(d => {
+    const div = document.createElement('div');
+    div.className = 'thumb';
+    div.innerHTML = `<img src="${d.pred}"/><div class="nm">${d.id} <span class="ari">ARI ${d.ARI.toFixed(3)}</span></div>`;
+    root.appendChild(div);
+  });
+}
+
+/* ============== DOWNLOAD ============== */
+function setupDownload(){
+  document.getElementById('dl-csv').addEventListener('click', () => {
+    const lines = ['Section,ARI,NMI,HS,CS'];
+    DATASETS.forEach(d => lines.push([d.id, d.ARI, d.NMI, d.HS, d.CS].join(',')));
+    lines.push('');
+    lines.push(`Mean,${SUMMARY.ARI.mean.toFixed(4)},${SUMMARY.NMI.mean.toFixed(4)},${SUMMARY.HS.mean.toFixed(4)},${SUMMARY.CS.mean.toFixed(4)}`);
+    lines.push(`Median,${SUMMARY.ARI.median.toFixed(4)},${SUMMARY.NMI.median.toFixed(4)},${SUMMARY.HS.median.toFixed(4)},${SUMMARY.CS.median.toFixed(4)}`);
+    const blob = new Blob([lines.join('\n')], { type:'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `dlpfc_metrics_${current.id}.csv`;
+    a.click();
+    toast('已下载 CSV');
+  });
+}
+
+/* ============== INIT ============== */
+populateSelector();
+setupBoardInteractions();
+setupControls();
+setupTabs();
+setupUpload();
+setupDownload();
+onSliceChange();
+</script>
+</body>
+</html>

@@ -1,0 +1,46 @@
+# ---------- Data ----------
+DLPFC/
+
+# ---------- Results ----------
+results/
+
+# ---------- Logs / backend output ----------
+main_file/
+
+# ---------- Virtual environment ----------
+AITraining/
+.venv/
+venv/
+env/
+
+# ---------- Python cache ----------
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.pytest_cache/
+
+# ---------- Large data files ----------
+*.pkl
+*.pkl.gz
+*.h5
+*.h5ad
+*.npy
+*.npz
+*.parquet
+
+# ---------- IDE / editor ----------
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ---------- Task description & large docs ----------
+MAEST.pdf
+*.docx
+空间域识别任务*.docx
+任务*.docx
